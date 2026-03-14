@@ -16,7 +16,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	log := logger.New(cfg.App.Env)
-	log.Info().Str("app", cfg.App.Name).Str("env", cfg.App.Env).Msg("Starting application... ->")
+	log.Info().Str("app", cfg.App.Name).Str("env", string(cfg.App.Env)).Msg("Starting application... ->")
 
 	database, err := db.NewPostgresConn(cfg.Database)
 	if err != nil {

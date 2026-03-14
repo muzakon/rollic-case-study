@@ -6,6 +6,14 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+type Env string
+
+const (
+	EnvDevelopment Env = "development"
+	EnvProduction  Env = "production"
+	EnvTesting     Env = "testing"
+)
+
 type Config struct {
 	App      AppConfig
 	HTTP     HTTPConfig
@@ -14,7 +22,7 @@ type Config struct {
 
 type AppConfig struct {
 	Name string `env:"APP_NAME" env-default:"leaderboard-api"`
-	Env  string `env:"APP_ENV" env-default:"development"`
+	Env  Env    `env:"APP_ENV" env-default:"development"`
 }
 
 type HTTPConfig struct {
