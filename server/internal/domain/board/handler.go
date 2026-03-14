@@ -2,11 +2,16 @@ package board
 
 import (
 	"server/internal/pkg/response"
+	"server/internal/server/middleware"
+	"strconv"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
+
+const defaultLimit = 20
+const maxLimit = 100
 
 type Handler struct {
 	service *Service
@@ -19,10 +24,23 @@ func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
 	return &Handler{service: svc, log: log}
 }
 
-// List returns all boards.
-// GET /api/v1/boards
+// List returns paginated boards.
+// GET /api/v1/boards?limit=20&cursor=...
 func (h *Handler) List(c fiber.Ctx) error {
-	return c.JSON(fiber.Map{"message": "list boards"})
+	limit := defaultLimit
+	if v := c.Query("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 && parsed <= maxLimit {
+			limit = parsed
+		}
+	}
+	cursor := c.Query("cursor")
+
+	result, err := h.service.List(limit, cursor)
+	if err != nil {
+		return middleware.ErrBadRequest(err.Error())
+	}
+
+	return response.OK(c, result)
 }
 
 // Get returns a single board by ID.

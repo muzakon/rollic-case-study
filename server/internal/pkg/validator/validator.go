@@ -48,28 +48,26 @@ func jsonFieldName(fe validator.FieldError) string {
 }
 
 func msgForTag(fe validator.FieldError) string {
-	field := jsonFieldName(fe)
-
 	switch fe.Tag() {
 	case "required":
-		return fmt.Sprintf("'%s' is required", field)
+		return "field is required"
 	case "min":
-		return fmt.Sprintf("'%s' must be at least %s characters", field, fe.Param())
+		return fmt.Sprintf("must be at least %s characters", fe.Param())
 	case "max":
-		return fmt.Sprintf("'%s' must be at most %s characters", field, fe.Param())
+		return fmt.Sprintf("must be at most %s characters", fe.Param())
 	case "oneof":
-		return fmt.Sprintf("'%s' must be one of: %s", field, fe.Param())
+		return fmt.Sprintf("must be one of: %s", fe.Param())
 	case "gt":
-		return fmt.Sprintf("'%s' must be greater than %s", field, fe.Param())
+		return fmt.Sprintf("must be greater than %s", fe.Param())
 	case "gte":
-		return fmt.Sprintf("'%s' must be greater than or equal to %s", field, fe.Param())
+		return fmt.Sprintf("must be greater than or equal to %s", fe.Param())
 	case "lte":
-		return fmt.Sprintf("'%s' must be less than or equal to %s", field, fe.Param())
+		return fmt.Sprintf("must be less than or equal to %s", fe.Param())
 	case "uuid":
-		return fmt.Sprintf("'%s' must be a valid UUID", field)
+		return "must be a valid UUID"
 	case "required_if":
-		return fmt.Sprintf("'%s' is required for this configuration", field)
+		return "field is required for this configuration"
 	default:
-		return fmt.Sprintf("'%s' failed validation: %s", field, fe.Tag())
+		return fmt.Sprintf("failed validation: %s", fe.Tag())
 	}
 }

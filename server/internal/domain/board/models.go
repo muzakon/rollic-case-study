@@ -1,6 +1,9 @@
 package board
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +13,23 @@ import (
 type BoardSchedule struct {
 	Type            string `json:"type"`
 	IntervalSeconds *int   `json:"intervalSeconds,omitempty"`
+}
+
+// Scan implements sql.Scanner for reading JSONB from the database.
+func (s *BoardSchedule) Scan(value any) error {
+	if value == nil {
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to scan BoardSchedule: expected []byte, got %T", value)
+	}
+	return json.Unmarshal(bytes, s)
+}
+
+// Value implements driver.Valuer for writing JSONB to the database.
+func (s BoardSchedule) Value() (driver.Value, error) {
+	return json.Marshal(s)
 }
 
 type Board struct {

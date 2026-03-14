@@ -18,10 +18,10 @@ type CreateScheduleRequest struct {
 // --- Response DTOs ---
 
 type BoardResponse struct {
-	ID          uuid.UUID          `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Schedule    *ScheduleResponse  `json:"schedule"`
+	ID          uuid.UUID         `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Schedule    *ScheduleResponse `json:"schedule"`
 }
 
 type ScheduleResponse struct {
@@ -29,7 +29,14 @@ type ScheduleResponse struct {
 	IntervalSeconds *int   `json:"intervalSeconds,omitempty"`
 }
 
-// ToBoardResponse converts a Board model to its API response.
+// BoardListItem is the lightweight representation used in list responses.
+type BoardListItem struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+}
+
+// ToBoardResponse converts a Board model to its full API response.
 func ToBoardResponse(b *Board) *BoardResponse {
 	resp := &BoardResponse{
 		ID:          b.ID,
@@ -45,4 +52,13 @@ func ToBoardResponse(b *Board) *BoardResponse {
 	}
 
 	return resp
+}
+
+// ToBoardListItem converts a Board model to a list item.
+func ToBoardListItem(b *Board) BoardListItem {
+	return BoardListItem{
+		ID:          b.ID,
+		Name:        b.Name,
+		Description: b.Description,
+	}
 }
