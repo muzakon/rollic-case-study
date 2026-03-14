@@ -1,17 +1,53 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/gofiber/fiber/v3"
+	"server/internal/config"
+	"server/internal/pkg/db"
+	"server/internal/pkg/logger"
+	"server/internal/server"
 )
 
 func main() {
-	app := fiber.New()
+	cfg := config.LoadConfig()
 
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World 👋!")
-	})
+	log := logger.New(cfg.App.Env)
+	log.Info().Str("app", cfg.App.Name).Str("env", cfg.App.Env).Msg("Starting application... ->")
 
-	log.Fatal(app.Listen(":3000"))
+	database, err := db.NewPostgresConn(cfg.Database)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to database")
+	}
+	log.Info().Msg("Database connected successfully!")
+
+	app := server.New(cfg, log, database)
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-quit
+		log.Info().Msg("shutting down server")
+
+		if err := app.Shutdown(); err != nil {
+			log.Error().Err(err).Msg("server forced to shutdown")
+		}
+
+		sqlDB, _ := database.DB()
+		if sqlDB != nil {
+			sqlDB.Close()
+		}
+	}()
+
+	addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
+	log.Info().Str("addr", addr).Msg("Listening server on ->")
+
+	if err := app.Listen(addr); err != nil {
+		log.Fatal().Err(err).Msg("server failed")
+	}
 }

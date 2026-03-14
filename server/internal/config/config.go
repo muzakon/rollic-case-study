@@ -14,6 +14,7 @@ type Config struct {
 
 type AppConfig struct {
 	Name string `env:"APP_NAME" env-default:"leaderboard-api"`
+	Env  string `env:"APP_ENV" env-default:"development"`
 }
 
 type HTTPConfig struct {
