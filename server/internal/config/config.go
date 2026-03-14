@@ -22,12 +22,15 @@ type HTTPConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `env:"DB_HOST" env-default:"localhost"`
-	Port     string `env:"DB_PORT" env-default:"5432"`
-	User     string `env:"DB_USER" env-required:"true"`
-	Password string `env:"DB_PASSWORD" env-required:"true"`
-	Name     string `env:"DB_NAME" env-required:"true"`
-	SSLMode  string `env:"DB_SSL_MODE" env-default:"disable"`
+	Host            string `env:"DB_HOST" env-default:"localhost"`
+	Port            string `env:"DB_PORT" env-default:"5432"`
+	User            string `env:"DB_USER" env-required:"true"`
+	Password        string `env:"DB_PASSWORD" env-required:"true"`
+	Name            string `env:"DB_NAME" env-required:"true"`
+	SSLMode         string `env:"DB_SSL_MODE" env-default:"disable"`
+	MaxOpenConns    int    `env:"DB_MAX_OPEN_CONNS" env-default:"100"`
+	MaxIdleConns    int    `env:"DB_MAX_IDLE_CONNS" env-default:"20"`
+	ConnMaxLifetime int    `env:"DB_CONN_MAX_LIFETIME_MINUTES" env-default:"15"`
 }
 
 func LoadConfig() *Config {
