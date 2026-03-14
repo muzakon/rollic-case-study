@@ -2,12 +2,14 @@ package score
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Score struct {
-	// I use composite primary key to ensure one score per user, per board.
-	BoardID string `gorm:"type:varchar(50);primaryKey;index:idx_board_score_time,priority:1"`
-	UserID  string `gorm:"type:varchar(50);primaryKey"`
+	// Composite primary key: one score per user, per board.
+	BoardID uuid.UUID `gorm:"type:uuid;primaryKey;index:idx_board_score_time,priority:1"`
+	UserID  string    `gorm:"type:varchar(50);primaryKey"`
 
 	// The score and when it was achieved
 	ScoreValue int       `gorm:"column:score;not null;index:idx_board_score_time,priority:2,sort:desc"`

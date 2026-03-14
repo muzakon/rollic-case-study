@@ -1,18 +1,22 @@
 package board
 
 import (
+	"server/internal/pkg/response"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
 
 type Handler struct {
-	db  *gorm.DB
-	log *zerolog.Logger
+	service *Service
+	log     *zerolog.Logger
 }
 
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
-	return &Handler{db: db, log: log}
+	repo := NewRepository(db)
+	svc := NewService(repo, log)
+	return &Handler{service: svc, log: log}
 }
 
 // List returns all boards.
@@ -31,5 +35,15 @@ func (h *Handler) Get(c fiber.Ctx) error {
 // Create creates a new board.
 // POST /api/v1/boards
 func (h *Handler) Create(c fiber.Ctx) error {
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "create board"})
+	req := new(CreateBoardRequest)
+	if err := c.Bind().Body(req); err != nil {
+		return err
+	}
+
+	board, err := h.service.Create(req)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create board")
+	}
+
+	return response.Created(c, ToBoardResponse(board))
 }

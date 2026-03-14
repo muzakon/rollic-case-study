@@ -12,10 +12,16 @@ func init() {
 }
 
 func upInit(ctx context.Context, tx *sql.Tx) error {
-	// 1. Create boards table
-	_, err := tx.Exec(`
+	// 1. Enable uuid extension
+	_, err := tx.Exec(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`)
+	if err != nil {
+		return err
+	}
+
+	// 2. Create boards table
+	_, err = tx.Exec(`
         CREATE TABLE boards (
-            id VARCHAR(50) PRIMARY KEY,
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR(255) NOT NULL,
             description TEXT,
             schedule JSONB,
@@ -28,17 +34,17 @@ func upInit(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	// 2. Create index on boards.next_reset_at
+	// 3. Create index on boards.next_reset_at
 	_, err = tx.Exec(`CREATE INDEX idx_boards_next_reset_at ON boards(next_reset_at);`)
 	if err != nil {
 		return err
 	}
 
-	// 3. Create scores table
-	// Note: Composite Primary Key on (board_id, user_id)
+	// 4. Create scores table
+	// Composite Primary Key on (board_id, user_id)
 	_, err = tx.Exec(`
         CREATE TABLE scores (
-            board_id VARCHAR(50) NOT NULL,
+            board_id UUID NOT NULL,
             user_id VARCHAR(50) NOT NULL,
             score INTEGER NOT NULL,
             achieved_at TIMESTAMPTZ NOT NULL,
@@ -51,7 +57,7 @@ func upInit(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	// 4. Create composite index for high score lookups
+	// 5. Create composite index for high score lookups
 	_, err = tx.Exec(`
         CREATE INDEX idx_board_score_time ON scores(board_id, score DESC, achieved_at ASC);
     `)
@@ -59,10 +65,10 @@ func upInit(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	// 5. Add Foreign Key Constraint
+	// 6. Add Foreign Key Constraint
 	_, err = tx.Exec(`
-        ALTER TABLE scores 
-        ADD CONSTRAINT fk_scores_board 
+        ALTER TABLE scores
+        ADD CONSTRAINT fk_scores_board
         FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE;
     `)
 
