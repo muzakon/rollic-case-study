@@ -26,6 +26,7 @@ type DatabaseConfig struct {
 	User     string `env:"DB_USER" env-required:"true"`
 	Password string `env:"DB_PASSWORD" env-required:"true"`
 	Name     string `env:"DB_NAME" env-required:"true"`
+	SSLMode  string `env:"DB_SSL_MODE" env-default:"disable"`
 }
 
 func LoadConfig() *Config {
