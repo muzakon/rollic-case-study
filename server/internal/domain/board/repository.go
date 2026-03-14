@@ -22,6 +22,15 @@ func (r *Repository) Create(board *Board) error {
 	return r.db.Create(board).Error
 }
 
+func (r *Repository) GetByID(id uuid.UUID) (*Board, error) {
+	var board Board
+	err := r.db.Where("id = ?", id).First(&board).Error
+	if err != nil {
+		return nil, err
+	}
+	return &board, nil
+}
+
 func (r *Repository) Count() (int64, error) {
 	var count int64
 	err := r.db.Model(&Board{}).Count(&count).Error

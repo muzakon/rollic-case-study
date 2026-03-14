@@ -1,9 +1,13 @@
 package board
 
 import (
+	"errors"
 	"server/internal/pkg/response"
+	"server/internal/server/middleware"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"gorm.io/gorm"
 )
 
 type Service struct {
@@ -33,6 +37,18 @@ func (s *Service) Create(req *CreateBoardRequest) (*Board, error) {
 		return nil, err
 	}
 
+	return board, nil
+}
+
+func (s *Service) GetByID(id uuid.UUID) (*Board, error) {
+	board, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, middleware.ErrNotFound("Board")
+		}
+		s.log.Error().Err(err).Str("boardId", id.String()).Msg("failed to get board")
+		return nil, err
+	}
 	return board, nil
 }
 

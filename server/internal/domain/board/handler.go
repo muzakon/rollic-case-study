@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
@@ -46,8 +47,17 @@ func (h *Handler) List(c fiber.Ctx) error {
 // Get returns a single board by ID.
 // GET /api/v1/boards/:boardId
 func (h *Handler) Get(c fiber.Ctx) error {
-	_ = c.Params("boardId")
-	return c.JSON(fiber.Map{"message": "get board"})
+	id, err := uuid.Parse(c.Params("boardId"))
+	if err != nil {
+		return middleware.ErrBadRequest("Invalid board ID, must be a valid UUID")
+	}
+
+	board, err := h.service.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	return response.OK(c, ToBoardResponse(board))
 }
 
 // Create creates a new board.

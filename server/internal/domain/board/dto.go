@@ -1,6 +1,10 @@
 package board
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // --- Request DTOs ---
 
@@ -21,7 +25,9 @@ type BoardResponse struct {
 	ID          uuid.UUID         `json:"id"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
+	CreatedAt   time.Time         `json:"createdAt"`
 	Schedule    *ScheduleResponse `json:"schedule"`
+	NextResetAt *time.Time        `json:"nextResetAt"`
 }
 
 type ScheduleResponse struct {
@@ -42,6 +48,8 @@ func ToBoardResponse(b *Board) *BoardResponse {
 		ID:          b.ID,
 		Name:        b.Name,
 		Description: b.Description,
+		CreatedAt:   b.CreatedAt,
+		NextResetAt: b.NextResetAt,
 	}
 
 	if b.Schedule != nil {
