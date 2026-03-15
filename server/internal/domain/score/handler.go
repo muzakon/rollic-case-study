@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"server/internal/domain/board"
+	"server/internal/domain/user"
 	"server/internal/pkg/response"
 	"server/internal/server/middleware"
 
@@ -21,7 +22,8 @@ type Handler struct {
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
 	repo := NewRepository(db)
 	boardRepo := board.NewRepository(db)
-	service := NewService(repo, boardRepo, log)
+	userRepo := user.NewRepository(db)
+	service := NewService(repo, boardRepo, userRepo, log)
 	return &Handler{service: service, log: log}
 }
 
@@ -57,8 +59,26 @@ func (h *Handler) Submit(c fiber.Ctx) error {
 // Surroundings returns scores around a specific user.
 // GET /api/v1/boards/:boardId/scores/:userId/surroundings?n=5
 func (h *Handler) Surroundings(c fiber.Ctx) error {
-	_ = c.Params("boardId")
-	_ = c.Params("userId")
-	_ = c.Query("n", "5")
-	return c.JSON(fiber.Map{"message": "get surroundings"})
+	boardID, err := uuid.Parse(c.Params("boardId"))
+	if err != nil {
+		return middleware.ErrBadRequest("invalid board id")
+	}
+
+	userID := c.Params("userId")
+	if userID == "" {
+		return middleware.ErrBadRequest("user id is required")
+	}
+
+	nStr := c.Query("n", "5")
+	n, err := strconv.Atoi(nStr)
+	if err != nil || n < 1 {
+		return middleware.ErrBadRequest("Invalid value for n")
+	}
+
+	result, err := h.service.GetSurroundings(boardID, userID, n)
+	if err != nil {
+		return err
+	}
+
+	return response.OK(c, result)
 }
