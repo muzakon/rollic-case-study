@@ -3,6 +3,7 @@ package score
 import (
 	"strconv"
 
+	"server/internal/domain/board"
 	"server/internal/pkg/response"
 	"server/internal/server/middleware"
 
@@ -19,7 +20,8 @@ type Handler struct {
 
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
 	repo := NewRepository(db)
-	service := NewService(repo, log)
+	boardRepo := board.NewRepository(db)
+	service := NewService(repo, boardRepo, log)
 	return &Handler{service: service, log: log}
 }
 

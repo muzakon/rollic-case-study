@@ -31,6 +31,13 @@ func (r *Repository) GetByID(id uuid.UUID) (*Board, error) {
 	return &board, nil
 }
 
+// Exists checks whether a board with the given ID exists.
+func (r *Repository) Exists(id uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.Model(&Board{}).Where("id = ?", id).Count(&count).Error
+	return count > 0, err
+}
+
 func (r *Repository) Count() (int64, error) {
 	var count int64
 	err := r.db.Model(&Board{}).Count(&count).Error
