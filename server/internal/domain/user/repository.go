@@ -16,3 +16,8 @@ func (r *Repository) Exists(id string) (bool, error) {
 	err := r.db.Model(&User{}).Where("id = ?", id).Count(&count).Error
 	return count > 0, err
 }
+
+// CreateMany inserts multiple users in a single batch.
+func (r *Repository) CreateMany(users []User) error {
+	return r.db.Create(&users).Error
+}

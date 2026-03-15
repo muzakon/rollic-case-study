@@ -24,6 +24,11 @@ func (r *Repository) GetTopScores(boardID uuid.UUID, n int) ([]Score, error) {
 	return scores, err
 }
 
+// CreateMany inserts multiple scores in a single batch.
+func (r *Repository) CreateMany(scores []Score) error {
+	return r.db.Create(&scores).Error
+}
+
 // GetUserScore returns a single score for a user on a board.
 func (r *Repository) GetUserScore(boardID uuid.UUID, userID string) (*Score, error) {
 	var s Score

@@ -56,6 +56,27 @@ func (h *Handler) Submit(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "submit score"})
 }
 
+// Seed populates a board with n mock users and random scores.
+// POST /api/v1/boards/:boardId/scores/seed
+func (h *Handler) Seed(c fiber.Ctx) error {
+	boardID, err := uuid.Parse(c.Params("boardId"))
+	if err != nil {
+		return middleware.ErrBadRequest("invalid board id")
+	}
+
+	var req SeedRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return err
+	}
+
+	result, err := h.service.Seed(boardID, req.N)
+	if err != nil {
+		return err
+	}
+
+	return response.Created(c, result)
+}
+
 // Surroundings returns scores around a specific user.
 // GET /api/v1/boards/:boardId/scores/:userId/surroundings?n=5
 func (h *Handler) Surroundings(c fiber.Ctx) error {

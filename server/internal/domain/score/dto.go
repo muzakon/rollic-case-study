@@ -6,6 +6,17 @@ type ScoreResponse struct {
 	Score  int    `json:"score"`
 }
 
+// SeedRequest is the request DTO for the seed endpoint.
+type SeedRequest struct {
+	N int `json:"n" validate:"required,gt=0"`
+}
+
+// SeedResponse is the response DTO for the seed endpoint.
+type SeedResponse struct {
+	UsersCreated  int `json:"usersCreated"`
+	ScoresCreated int `json:"scoresCreated"`
+}
+
 // SurroundingsResponse is the response DTO for the surroundings endpoint.
 type SurroundingsResponse struct {
 	User  ScoreResponse   `json:"user"`

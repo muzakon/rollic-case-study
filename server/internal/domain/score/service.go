@@ -2,8 +2,12 @@ package score
 
 import (
 	"errors"
+	"fmt"
+	"math/rand/v2"
 	"slices"
+	"time"
 
+	"server/internal/domain/user"
 	"server/internal/server/middleware"
 
 	"github.com/google/uuid"
@@ -15,23 +19,19 @@ type BoardChecker interface {
 	Exists(id uuid.UUID) (bool, error)
 }
 
-type UserChecker interface {
-	Exists(id string) (bool, error)
-}
-
 type Service struct {
-	repo         *Repository
-	boardChecker BoardChecker
-	userChecker  UserChecker
-	log          *zerolog.Logger
+	repo      *Repository
+	boardRepo BoardChecker
+	userRepo  *user.Repository
+	log       *zerolog.Logger
 }
 
-func NewService(repo *Repository, boardChecker BoardChecker, userChecker UserChecker, log *zerolog.Logger) *Service {
-	return &Service{repo: repo, boardChecker: boardChecker, userChecker: userChecker, log: log}
+func NewService(repo *Repository, boardRepo BoardChecker, userRepo *user.Repository, log *zerolog.Logger) *Service {
+	return &Service{repo: repo, boardRepo: boardRepo, userRepo: userRepo, log: log}
 }
 
 func (s *Service) checkBoardExists(boardID uuid.UUID) error {
-	exists, err := s.boardChecker.Exists(boardID)
+	exists, err := s.boardRepo.Exists(boardID)
 	if err != nil {
 		s.log.Error().Err(err).Str("boardId", boardID.String()).Msg("failed to check board existence")
 		return err
@@ -70,7 +70,7 @@ func (s *Service) GetSurroundings(boardID uuid.UUID, userID string, n int) (*Sur
 		return nil, err
 	}
 
-	exists, err := s.userChecker.Exists(userID)
+	exists, err := s.userRepo.Exists(userID)
 	if err != nil {
 		s.log.Error().Err(err).Str("userId", userID).Msg("failed to check user existence")
 		return nil, err
@@ -116,5 +116,45 @@ func (s *Service) GetSurroundings(boardID uuid.UUID, userID string, n int) (*Sur
 		User:  ScoreResponse{UserID: userScore.UserID, Score: userScore.ScoreValue},
 		Above: aboveRes,
 		Below: belowRes,
+	}, nil
+}
+
+// Seed creates n mock users with random scores for a board.
+func (s *Service) Seed(boardID uuid.UUID, n int) (*SeedResponse, error) {
+	if err := s.checkBoardExists(boardID); err != nil {
+		return nil, err
+	}
+
+	users := make([]user.User, n)
+	scores := make([]Score, n)
+	now := time.Now()
+
+	for i := range n {
+		userID := fmt.Sprintf("user_%d", now.UnixNano()+int64(i))
+		users[i] = user.User{
+			ID:       userID,
+			Username: fmt.Sprintf("player_%d", i+1),
+		}
+		scores[i] = Score{
+			BoardID:    boardID,
+			UserID:     userID,
+			ScoreValue: rand.IntN(10000) + 1,
+			AchievedAt: now.Add(-time.Duration(rand.IntN(3600)) * time.Second),
+		}
+	}
+
+	if err := s.userRepo.CreateMany(users); err != nil {
+		s.log.Error().Err(err).Str("boardId", boardID.String()).Msg("failed to create mock users")
+		return nil, err
+	}
+
+	if err := s.repo.CreateMany(scores); err != nil {
+		s.log.Error().Err(err).Str("boardId", boardID.String()).Msg("failed to create mock scores")
+		return nil, err
+	}
+
+	return &SeedResponse{
+		UsersCreated:  n,
+		ScoresCreated: n,
 	}, nil
 }

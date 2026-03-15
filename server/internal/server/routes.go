@@ -27,5 +27,6 @@ func RegisterRoutes(app *fiber.App, log *zerolog.Logger, db *gorm.DB, cfg *confi
 	scores := boards.Group("/:boardId/scores")
 	scores.Get("/", scoreHandler.List)
 	scores.Post("/", scoreHandler.Submit)
+	scores.Post("/seed", scoreHandler.Seed)
 	scores.Get("/:userId/surroundings", scoreHandler.Surroundings)
 }
