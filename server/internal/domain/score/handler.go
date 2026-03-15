@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"server/internal/domain/board"
-	"server/internal/domain/user"
 	"server/internal/pkg/response"
 	"server/internal/server/middleware"
 
@@ -22,8 +21,7 @@ type Handler struct {
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
 	repo := NewRepository(db)
 	boardRepo := board.NewRepository(db)
-	userRepo := user.NewRepository(db)
-	service := NewService(repo, boardRepo, userRepo, log)
+	service := NewService(repo, boardRepo, log)
 	return &Handler{service: service, log: log}
 }
 
@@ -49,14 +47,28 @@ func (h *Handler) List(c fiber.Ctx) error {
 	return response.OK(c, scores)
 }
 
-// Submit submits a score for a board.
+// Submit creates or updates a user's score on a board.
 // POST /api/v1/boards/:boardId/scores
 func (h *Handler) Submit(c fiber.Ctx) error {
-	_ = c.Params("boardId")
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "submit score"})
+	boardID, err := uuid.Parse(c.Params("boardId"))
+	if err != nil {
+		return middleware.ErrBadRequest("invalid board id")
+	}
+
+	var req SubmitRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return err
+	}
+
+	result, err := h.service.Submit(boardID, &req)
+	if err != nil {
+		return err
+	}
+
+	return response.Created(c, result)
 }
 
-// Seed populates a board with n mock users and random scores.
+// Seed populates a board with n mock scores.
 // POST /api/v1/boards/:boardId/scores/seed
 func (h *Handler) Seed(c fiber.Ctx) error {
 	boardID, err := uuid.Parse(c.Params("boardId"))

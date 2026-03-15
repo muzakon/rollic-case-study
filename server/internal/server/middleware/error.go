@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
 
 	appvalidator "server/internal/pkg/validator"
@@ -37,6 +38,28 @@ func ErrBadRequest(message string) *AppError {
 // GlobalErrorHandler is the Fiber error handler that catches all returned errors
 // and formats them into consistent JSON responses.
 func GlobalErrorHandler(c fiber.Ctx, err error) error {
+	// JSON unmarshaling errors (type mismatches, syntax errors)
+	var jsonErr *json.UnmarshalTypeError
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &jsonErr) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid JSON format",
+			"details": []appvalidator.ValidationError{{
+				Field:   jsonErr.Field,
+				Message: "invalid type or format",
+			}},
+		})
+	}
+	if errors.As(err, &syntaxErr) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid JSON syntax",
+			"details": []appvalidator.ValidationError{{
+				Field:   "unknown",
+				Message: "malformed JSON",
+			}},
+		})
+	}
+
 	// Validation errors from go-playground/validator
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {

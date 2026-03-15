@@ -29,6 +29,14 @@ func (r *Repository) CreateMany(scores []Score) error {
 	return r.db.Create(&scores).Error
 }
 
+// Upsert creates or updates a score for a user on a board.
+func (r *Repository) Upsert(s *Score) error {
+	return r.db.
+		Where("board_id = ? AND user_id = ?", s.BoardID, s.UserID).
+		Assign(Score{ScoreValue: s.ScoreValue, AchievedAt: s.AchievedAt}).
+		FirstOrCreate(s).Error
+}
+
 // GetUserScore returns a single score for a user on a board.
 func (r *Repository) GetUserScore(boardID uuid.UUID, userID string) (*Score, error) {
 	var s Score

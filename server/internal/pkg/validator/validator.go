@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -12,7 +13,15 @@ type StructValidator struct {
 }
 
 func New() *StructValidator {
-	return &StructValidator{validate: validator.New(validator.WithRequiredStructEnabled())}
+	v := validator.New(validator.WithRequiredStructEnabled())
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return fld.Name
+		}
+		return name
+	})
+	return &StructValidator{validate: v}
 }
 
 // Validate implements fiber.StructValidator interface.
@@ -44,7 +53,7 @@ func FormatErrors(err error) []ValidationError {
 }
 
 func jsonFieldName(fe validator.FieldError) string {
-	return strings.ToLower(fe.Field())
+	return fe.Field()
 }
 
 func msgForTag(fe validator.FieldError) string {

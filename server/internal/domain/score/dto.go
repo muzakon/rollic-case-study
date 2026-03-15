@@ -6,6 +6,19 @@ type ScoreResponse struct {
 	Score  int    `json:"score"`
 }
 
+// SubmitRequest is the request DTO for submitting a score.
+type SubmitRequest struct {
+	UserID string `json:"userId" validate:"required"`
+	Score  int    `json:"score" validate:"required,gt=0"`
+}
+
+// SubmitResponse is the response DTO for the submit endpoint.
+type SubmitResponse struct {
+	BoardID string `json:"boardId"`
+	UserID  string `json:"userId"`
+	Score   int    `json:"score"`
+}
+
 // SeedRequest is the request DTO for the seed endpoint.
 type SeedRequest struct {
 	N int `json:"n" validate:"required,gt=0"`
@@ -13,7 +26,6 @@ type SeedRequest struct {
 
 // SeedResponse is the response DTO for the seed endpoint.
 type SeedResponse struct {
-	UsersCreated  int `json:"usersCreated"`
 	ScoresCreated int `json:"scoresCreated"`
 }
 

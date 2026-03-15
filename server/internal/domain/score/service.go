@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"server/internal/domain/user"
 	"server/internal/server/middleware"
 
 	"github.com/google/uuid"
@@ -22,12 +21,11 @@ type BoardChecker interface {
 type Service struct {
 	repo      *Repository
 	boardRepo BoardChecker
-	userRepo  *user.Repository
 	log       *zerolog.Logger
 }
 
-func NewService(repo *Repository, boardRepo BoardChecker, userRepo *user.Repository, log *zerolog.Logger) *Service {
-	return &Service{repo: repo, boardRepo: boardRepo, userRepo: userRepo, log: log}
+func NewService(repo *Repository, boardRepo BoardChecker, log *zerolog.Logger) *Service {
+	return &Service{repo: repo, boardRepo: boardRepo, log: log}
 }
 
 func (s *Service) checkBoardExists(boardID uuid.UUID) error {
@@ -40,6 +38,31 @@ func (s *Service) checkBoardExists(boardID uuid.UUID) error {
 		return middleware.ErrNotFound("Board")
 	}
 	return nil
+}
+
+// Submit creates or updates a user's score on a board.
+func (s *Service) Submit(boardID uuid.UUID, req *SubmitRequest) (*SubmitResponse, error) {
+	if err := s.checkBoardExists(boardID); err != nil {
+		return nil, err
+	}
+
+	sc := &Score{
+		BoardID:    boardID,
+		UserID:     req.UserID,
+		ScoreValue: req.Score,
+		AchievedAt: time.Now(),
+	}
+
+	if err := s.repo.Upsert(sc); err != nil {
+		s.log.Error().Err(err).Str("boardId", boardID.String()).Str("userId", req.UserID).Msg("failed to upsert score")
+		return nil, err
+	}
+
+	return &SubmitResponse{
+		BoardID: boardID.String(),
+		UserID:  sc.UserID,
+		Score:   sc.ScoreValue,
+	}, nil
 }
 
 // GetTopScores returns the top n scores for a board as response DTOs.
@@ -68,15 +91,6 @@ func (s *Service) GetTopScores(boardID uuid.UUID, n int) ([]ScoreResponse, error
 func (s *Service) GetSurroundings(boardID uuid.UUID, userID string, n int) (*SurroundingsResponse, error) {
 	if err := s.checkBoardExists(boardID); err != nil {
 		return nil, err
-	}
-
-	exists, err := s.userRepo.Exists(userID)
-	if err != nil {
-		s.log.Error().Err(err).Str("userId", userID).Msg("failed to check user existence")
-		return nil, err
-	}
-	if !exists {
-		return nil, middleware.ErrNotFound("User")
 	}
 
 	userScore, err := s.repo.GetUserScore(boardID, userID)
@@ -119,33 +133,22 @@ func (s *Service) GetSurroundings(boardID uuid.UUID, userID string, n int) (*Sur
 	}, nil
 }
 
-// Seed creates n mock users with random scores for a board.
+// Seed creates n mock scores for a board.
 func (s *Service) Seed(boardID uuid.UUID, n int) (*SeedResponse, error) {
 	if err := s.checkBoardExists(boardID); err != nil {
 		return nil, err
 	}
 
-	users := make([]user.User, n)
 	scores := make([]Score, n)
 	now := time.Now()
 
 	for i := range n {
-		userID := fmt.Sprintf("user_%d", now.UnixNano()+int64(i))
-		users[i] = user.User{
-			ID:       userID,
-			Username: fmt.Sprintf("player_%d", i+1),
-		}
 		scores[i] = Score{
 			BoardID:    boardID,
-			UserID:     userID,
+			UserID:     fmt.Sprintf("user_%d", now.UnixNano()+int64(i)),
 			ScoreValue: rand.IntN(10000) + 1,
 			AchievedAt: now.Add(-time.Duration(rand.IntN(3600)) * time.Second),
 		}
-	}
-
-	if err := s.userRepo.CreateMany(users); err != nil {
-		s.log.Error().Err(err).Str("boardId", boardID.String()).Msg("failed to create mock users")
-		return nil, err
 	}
 
 	if err := s.repo.CreateMany(scores); err != nil {
@@ -154,7 +157,6 @@ func (s *Service) Seed(boardID uuid.UUID, n int) (*SeedResponse, error) {
 	}
 
 	return &SeedResponse{
-		UsersCreated:  n,
 		ScoresCreated: n,
 	}, nil
 }
