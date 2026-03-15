@@ -1,26 +1,48 @@
 package score
 
 import (
+	"strconv"
+
+	"server/internal/pkg/response"
+	"server/internal/server/middleware"
+
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
 
 type Handler struct {
-	db  *gorm.DB
-	log *zerolog.Logger
+	service *Service
+	log     *zerolog.Logger
 }
 
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
-	return &Handler{db: db, log: log}
+	repo := NewRepository(db)
+	service := NewService(repo, log)
+	return &Handler{service: service, log: log}
 }
 
 // List returns the top N scores for a board.
 // GET /api/v1/boards/:boardId/scores?n=10
 func (h *Handler) List(c fiber.Ctx) error {
-	_ = c.Params("boardId")
-	_ = c.Query("n", "10")
-	return c.JSON(fiber.Map{"message": "list scores"})
+	boardID, err := uuid.Parse(c.Params("boardId"))
+	if err != nil {
+		return middleware.ErrBadRequest("invalid board id")
+	}
+
+	nStr := c.Query("n", "10")
+	n, err := strconv.Atoi(nStr)
+	if err != nil || n < 1 {
+		return middleware.ErrBadRequest("Invalid value for n")
+	}
+
+	scores, err := h.service.GetTopScores(boardID, n)
+	if err != nil {
+		return err
+	}
+
+	return response.OK(c, scores)
 }
 
 // Submit submits a score for a board.
