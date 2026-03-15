@@ -52,7 +52,7 @@ func (s *Service) GetByID(id uuid.UUID) (*Board, error) {
 	return board, nil
 }
 
-func (s *Service) List(limit int, cursorStr string) (*response.PaginatedResponse, error) {
+func (s *Service) List(limit *int, cursorStr string) (*response.PaginatedResponse, error) {
 	totalCount, err := s.repo.Count()
 	if err != nil {
 		s.log.Error().Err(err).Msg("failed to count boards")
@@ -79,16 +79,20 @@ func (s *Service) List(limit int, cursorStr string) (*response.PaginatedResponse
 	}
 
 	var nextCursor *string
-	if hasNext && len(boards) > 0 {
-		last := boards[len(boards)-1]
-		c := EncodeCursor(last.CreatedAt, last.ID)
-		nextCursor = &c
+	var limitValue int
+	if limit != nil {
+		limitValue = *limit
+		if hasNext && len(boards) > 0 {
+			last := boards[len(boards)-1]
+			c := EncodeCursor(last.CreatedAt, last.ID)
+			nextCursor = &c
+		}
 	}
 
 	return &response.PaginatedResponse{
 		Data:       items,
 		TotalCount: totalCount,
-		Limit:      limit,
+		Limit:      limitValue,
 		HasNext:    hasNext,
 		Cursor:     nextCursor,
 	}, nil

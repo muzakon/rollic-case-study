@@ -1,6 +1,7 @@
 package board
 
 import (
+	"server/internal/config"
 	"server/internal/pkg/response"
 	"server/internal/server/middleware"
 	"strconv"
@@ -11,27 +12,30 @@ import (
 	"gorm.io/gorm"
 )
 
-const defaultLimit = 20
-const maxLimit = 100
-
 type Handler struct {
-	service *Service
-	log     *zerolog.Logger
+	service  *Service
+	log      *zerolog.Logger
+	maxLimit int
 }
 
-func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
+func NewHandler(db *gorm.DB, log *zerolog.Logger, cfg *config.Config) *Handler {
 	repo := NewRepository(db)
 	svc := NewService(repo, log)
-	return &Handler{service: svc, log: log}
+	return &Handler{
+		service:  svc,
+		log:      log,
+		maxLimit: cfg.Pagination.MaxLimit,
+	}
 }
 
 // List returns paginated boards.
 // GET /api/v1/boards?limit=20&cursor=...
+// If no limit is provided, fetches all boards without pagination.
 func (h *Handler) List(c fiber.Ctx) error {
-	limit := defaultLimit
+	var limit *int
 	if v := c.Query("limit"); v != "" {
-		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 && parsed <= maxLimit {
-			limit = parsed
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 && parsed <= h.maxLimit {
+			limit = &parsed
 		}
 	}
 	cursor := c.Query("cursor")

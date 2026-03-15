@@ -1,6 +1,7 @@
 package server
 
 import (
+	"server/internal/config"
 	"server/internal/domain/board"
 	"server/internal/domain/score"
 
@@ -9,8 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterRoutes(app *fiber.App, log *zerolog.Logger, db *gorm.DB) {
-	boardHandler := board.NewHandler(db, log)
+func RegisterRoutes(app *fiber.App, log *zerolog.Logger, db *gorm.DB, cfg *config.Config) {
+	boardHandler := board.NewHandler(db, log, cfg)
 	scoreHandler := score.NewHandler(db, log)
 
 	api := app.Group("/api")

@@ -76,8 +76,9 @@ func DecodeCursor(encoded string) (*Cursor, error) {
 
 // List returns boards with cursor-based pagination.
 // Orders by created_at DESC, id DESC (newest first).
-// Fetches limit+1 rows to determine hasNext without an extra query.
-func (r *Repository) List(limit int, cursor *Cursor) ([]Board, bool, error) {
+// If limit is nil, fetches all boards without pagination.
+// If limit is provided, fetches limit+1 rows to determine hasNext without an extra query.
+func (r *Repository) List(limit *int, cursor *Cursor) ([]Board, bool, error) {
 	query := r.db.Model(&Board{}).Order("created_at DESC, id DESC")
 
 	if cursor != nil {
@@ -88,14 +89,26 @@ func (r *Repository) List(limit int, cursor *Cursor) ([]Board, bool, error) {
 	}
 
 	var boards []Board
-	err := query.Limit(limit + 1).Find(&boards).Error
+	var err error
+
+	if limit != nil {
+		err = query.Limit(*limit + 1).Find(&boards).Error
+	} else {
+		err = query.Find(&boards).Error
+	}
+
 	if err != nil {
 		return nil, false, err
 	}
 
-	hasNext := len(boards) > limit
-	if hasNext {
-		boards = boards[:limit]
+	var hasNext bool
+	if limit != nil {
+		hasNext = len(boards) > *limit
+		if hasNext {
+			boards = boards[:*limit]
+		}
+	} else {
+		hasNext = false // No pagination when limit is nil
 	}
 
 	return boards, hasNext, nil

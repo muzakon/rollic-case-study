@@ -15,9 +15,10 @@ const (
 )
 
 type Config struct {
-	App      AppConfig
-	HTTP     HTTPConfig
-	Database DatabaseConfig
+	App        AppConfig
+	HTTP       HTTPConfig
+	Database   DatabaseConfig
+	Pagination PaginationConfig
 }
 
 type AppConfig struct {
@@ -27,6 +28,10 @@ type AppConfig struct {
 
 type HTTPConfig struct {
 	Port string `env:"HTTP_PORT" env-default:"8080"`
+}
+
+type PaginationConfig struct {
+	MaxLimit int `env:"PAGINATION_MAX_LIMIT" env-default:"100"`
 }
 
 type DatabaseConfig struct {

@@ -18,7 +18,7 @@ func New(cfg *config.Config, log *zerolog.Logger, db *gorm.DB) *fiber.App {
 		ErrorHandler:    middleware.GlobalErrorHandler,
 	})
 
-	RegisterRoutes(app, log, db)
+	RegisterRoutes(app, log, db, cfg)
 
 	return app
 }
