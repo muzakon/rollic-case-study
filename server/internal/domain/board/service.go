@@ -20,18 +20,19 @@ func NewService(repo *Repository, log *zerolog.Logger) *Service {
 	return &Service{repo: repo, log: log}
 }
 
-// calculateNextResetAt calculates the next reset time based on the schedule type
-func calculateNextResetAt(schedule *BoardSchedule) *time.Time {
+// CalculateNextResetAt calculates the next reset time based on the schedule type,
+// advancing from the given base time. Pass time.Now().UTC() for initial creation;
+// pass the board's current NextResetAt when advancing after a reset so the cadence
+// stays anchored to the original schedule rather than drifting with wall clock.
+func CalculateNextResetAt(schedule *BoardSchedule, from time.Time) *time.Time {
 	if schedule == nil {
 		return nil
 	}
 
-	now := time.Now().UTC()
-
 	switch schedule.Type {
 	case "interval":
 		if schedule.IntervalSeconds != nil {
-			nextReset := now.Add(time.Duration(*schedule.IntervalSeconds) * time.Second)
+			nextReset := from.Add(time.Duration(*schedule.IntervalSeconds) * time.Second)
 			return &nextReset
 		}
 	}
@@ -51,7 +52,7 @@ func (s *Service) Create(req *CreateBoardRequest) (*Board, error) {
 			IntervalSeconds: req.Schedule.IntervalSeconds,
 		}
 		// Calculate and set the next reset time
-		board.NextResetAt = calculateNextResetAt(board.Schedule)
+		board.NextResetAt = CalculateNextResetAt(board.Schedule, time.Now().UTC())
 	}
 
 	if err := s.repo.Create(board); err != nil {

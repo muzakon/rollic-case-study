@@ -81,6 +81,43 @@ func DecodeCursor(encoded string) (*Cursor, error) {
 	return &Cursor{CreatedAt: t, ID: id}, nil
 }
 
+// FindDueBoards returns all boards whose next_reset_at is due (i.e. <= now) and have a schedule set.
+func (r *Repository) FindDueBoards(now time.Time) ([]Board, error) {
+	var boards []Board
+	err := r.db.
+		Where("next_reset_at IS NOT NULL AND next_reset_at <= ?", now).
+		Find(&boards).Error
+	return boards, err
+}
+
+// UpdateNextResetAt sets a new next_reset_at value for the given board.
+// Passing nil clears the field (for schedules that only fire once).
+func (r *Repository) UpdateNextResetAt(id uuid.UUID, nextResetAt *time.Time) error {
+	return r.db.Model(&Board{}).
+		Where("id = ?", id).
+		Update("next_reset_at", nextResetAt).Error
+}
+
+// ResetEntry holds the new next_reset_at value for a single board.
+type ResetEntry struct {
+	ID          uuid.UUID
+	NextResetAt *time.Time
+}
+
+// BatchUpdateNextResetAt updates next_reset_at for multiple boards in a single transaction.
+func (r *Repository) BatchUpdateNextResetAt(entries []ResetEntry) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, e := range entries {
+			if err := tx.Model(&Board{}).
+				Where("id = ?", e.ID).
+				Update("next_reset_at", e.NextResetAt).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // List returns boards with cursor-based pagination.
 // Orders by created_at DESC, id DESC (newest first).
 // If limit is nil, fetches all boards without pagination.

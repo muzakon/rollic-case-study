@@ -49,6 +49,11 @@ func (r *Repository) GetUserScore(boardID uuid.UUID, userID string) (*Score, err
 	return &s, nil
 }
 
+// DeleteByBoardIDs permanently removes all scores for the given boards in a single query.
+func (r *Repository) DeleteByBoardIDs(boardIDs []uuid.UUID) error {
+	return r.db.Where("board_id IN ?", boardIDs).Delete(&Score{}).Error
+}
+
 // GetScoresAbove returns n scores ranked immediately above the given score (higher score or same score with earlier time).
 func (r *Repository) GetScoresAbove(boardID uuid.UUID, pivotScore int, pivotAchievedAt any, n int) ([]Score, error) {
 	var scores []Score

@@ -7,8 +7,11 @@ import (
 	"syscall"
 
 	"server/internal/config"
+	"server/internal/domain/board"
+	"server/internal/domain/score"
 	"server/internal/pkg/db"
 	"server/internal/pkg/logger"
+	"server/internal/scheduler"
 	"server/internal/server"
 )
 
@@ -24,6 +27,15 @@ func main() {
 	}
 	log.Info().Msg("Database connected successfully!")
 
+	boardRepo := board.NewRepository(database)
+	scoreRepo := score.NewRepository(database)
+
+	sched, err := scheduler.New(boardRepo, scoreRepo, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create scheduler")
+	}
+	sched.Start()
+
 	app := server.New(cfg, log, database)
 
 	// Graceful shutdown
@@ -33,6 +45,10 @@ func main() {
 	go func() {
 		<-quit
 		log.Info().Msg("shutting down server")
+
+		if err := sched.Shutdown(); err != nil {
+			log.Error().Err(err).Msg("scheduler forced to shutdown")
+		}
 
 		if err := app.Shutdown(); err != nil {
 			log.Error().Err(err).Msg("server forced to shutdown")

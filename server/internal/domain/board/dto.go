@@ -16,7 +16,7 @@ type CreateBoardRequest struct {
 
 type CreateScheduleRequest struct {
 	Type            string `json:"type" validate:"required,oneof=interval daily weekly monthly"`
-	IntervalSeconds *int   `json:"intervalSeconds" validate:"required_if=Type interval,omitempty,gt=0"`
+	IntervalSeconds *int   `json:"intervalSeconds" validate:"required_if=Type interval,omitempty,gte=60"`
 }
 
 // --- Response DTOs ---
