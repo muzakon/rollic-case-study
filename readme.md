@@ -18,7 +18,8 @@ I implemented all endpoints as described in the case study, with only minor chan
 
 ---
 
-### Changes I've applied
+### Changes I Applied
+
 1. I return `"id"` instead of `"boardId"` in board-related endpoints (e.g., list, create). Example response:
 ```
 {
