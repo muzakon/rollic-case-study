@@ -7,6 +7,19 @@ I implemented all endpoints as described in the case study, with only minor chan
 2. Run `make build`. I created a `Makefile` for convenience. If you cannot run `make` commands, execute: `docker compose -f docker-compose.yml up -d --build` after creating and updating your `.env` file. This will handle everything for you—creating services, initializing the database, running migrations, etc.
 3. For testing, run `make test-e2e` or `docker compose exec server gotestsum --format testdox --hide-summary=skipped -- ./tests/e2e/... -count=1` (make sure the `server` and `postgres` services are healthy).
 
+### Endpoints
+
+#### Boards
+- `GET /api/v1/boards/` - List all boards
+- `POST /api/v1/boards/` - Create a new board
+- `GET /api/v1/boards/:boardId` - Get a specific board
+
+#### Scores
+- `GET /api/v1/boards/:boardId/scores/` - List scores for a board
+- `POST /api/v1/boards/:boardId/scores/` - Submit a score
+- `POST /api/v1/boards/:boardId/scores/seed` - Seed scores for testing
+- `GET /api/v1/boards/:boardId/scores/:userId/surroundings` - Get surrounding scores for a user
+
 ### Tech Stack
 - Go (Fiber v3)
 - PostgreSQL (Goose for migrations & GORM with PostgreSQL driver)
