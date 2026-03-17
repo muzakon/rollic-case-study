@@ -1,17 +1,18 @@
 services:
   server:
     build:
+      context: .
       dockerfile: Dockerfile
     working_dir: /app
     volumes:
       - ./:/app
       - go_modules:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
     ports:
       - "${HTTP_PORT}:${HTTP_PORT}"
     environment:
       - DB_HOST=postgres
-    command: >
-      sh -c "air -c .air.toml || air --build.cmd 'go build -o ./tmp/main ./cmd/api' --build.bin './tmp/main'"
+    entrypoint: ["sh", "./scripts/entrypoint.sh"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,3 +38,4 @@ services:
 volumes:
   postgres_data:
   go_modules:
+  go_build_cache:

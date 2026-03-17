@@ -1,5 +1,12 @@
+.git
+.gitignore
+.env
+.vscode/
+.claude/
+CLAUDE.md
+readme.md
+tmp/
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
@@ -8,11 +15,3 @@
 coverage.*
 *.coverprofile
 profile.cov
-go.work
-go.work.sum
-.env
-.vscode/
-tmp
-
-CLAUDE.md
-.claude
