@@ -12,4 +12,4 @@ clean:
 	docker system prune -f
 
 test-e2e:
-	@cd server && gotestsum --format testdox --hide-summary=skipped -- ./tests/e2e/... -count=1
+	gotestsum --format testdox --hide-summary=skipped -- ./tests/e2e/... -count=1
