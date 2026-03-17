@@ -57,7 +57,7 @@ func main() {
 		}
 	}()
 
-	addr := ":5001"
+	addr := ":" + cfg.HTTP.Port
 	log.Info().Str("addr", addr).Msg("Listening server on ->")
 
 	if err := app.Listen(addr); err != nil {
