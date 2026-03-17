@@ -91,7 +91,7 @@ func testConfig() *config.Config {
 			Env:  config.EnvTesting,
 		},
 		Database: config.DatabaseConfig{
-			Host:            getEnvOrDefault("TEST_DB_HOST", "localhost"),
+			Host:            getEnvOrDefault("TEST_DB_HOST", "postgres"),
 			Port:            getEnvOrDefault("TEST_DB_PORT", "5432"),
 			User:            getEnvOrDefault("TEST_DB_USER", "postgres"),
 			Password:        getEnvOrDefault("TEST_DB_PASSWORD", "postgres"),

@@ -41,4 +41,4 @@ jobs:
           TEST_DB_PORT: 5432
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: postgres
-        run: make test-e2e
+        run: gotestsum --format testdox --hide-summary=skipped -- ./tests/e2e/... -count=1
