@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// BoardSchedule holds the reset schedule configuration stored as JSONB in Postgres.
 type BoardSchedule struct {
 	Type            string `json:"type"`
 	IntervalSeconds *int   `json:"intervalSeconds,omitempty"`
@@ -32,6 +33,7 @@ func (s BoardSchedule) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
+// Board represents a leaderboard entity with optional reset scheduling.
 type Board struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name        string    `gorm:"type:varchar(255);not null"`
@@ -46,6 +48,7 @@ type Board struct {
 	UpdatedAt   time.Time  `gorm:"autoUpdateTime"`
 }
 
+// BeforeCreate is a GORM hook that generates a UUID if one is not already set.
 func (b *Board) BeforeCreate(tx *gorm.DB) error {
 	if b.ID == uuid.Nil {
 		b.ID = uuid.New()

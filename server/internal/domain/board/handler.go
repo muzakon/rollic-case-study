@@ -12,12 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// Handler exposes HTTP endpoints for board operations.
 type Handler struct {
 	service  *Service
 	log      *zerolog.Logger
 	maxLimit int
 }
 
+// NewHandler wires up the board handler with its repository and service layers.
 func NewHandler(db *gorm.DB, log *zerolog.Logger, cfg *config.Config) *Handler {
 	repo := NewRepository(db)
 	svc := NewService(repo, log)

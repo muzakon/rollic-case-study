@@ -14,20 +14,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// BoardChecker abstracts the board existence check so the score service
+// does not depend on the full board repository.
 type BoardChecker interface {
 	Exists(id uuid.UUID) (bool, error)
 }
 
+// Service implements the business logic for leaderboard score operations.
 type Service struct {
 	repo      *Repository
 	boardRepo BoardChecker
 	log       *zerolog.Logger
 }
 
+// NewService creates a new score service with the given dependencies.
 func NewService(repo *Repository, boardRepo BoardChecker, log *zerolog.Logger) *Service {
 	return &Service{repo: repo, boardRepo: boardRepo, log: log}
 }
 
+// checkBoardExists returns an AppError(404) if the board does not exist.
 func (s *Service) checkBoardExists(boardID uuid.UUID) error {
 	exists, err := s.boardRepo.Exists(boardID)
 	if err != nil {

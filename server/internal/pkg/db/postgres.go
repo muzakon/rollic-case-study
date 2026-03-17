@@ -10,6 +10,8 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// NewPostgresConn opens a GORM connection to PostgreSQL with the given config
+// and configures the underlying connection pool parameters.
 func NewPostgresConn(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=UTC",

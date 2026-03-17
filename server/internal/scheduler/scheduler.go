@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"server/internal/domain/board"
-	"server/internal/domain/score"
 )
 
 // Scheduler periodically checks for boards whose reset window has elapsed,
@@ -16,14 +15,13 @@ import (
 type Scheduler struct {
 	s         gocron.Scheduler
 	boardRepo *board.Repository
-	scoreRepo *score.Repository
 	log       *zerolog.Logger
 }
 
 // New creates a Scheduler and registers the board-reset job.
 // The job runs every minute using singleton mode (LimitModeReschedule) so a
 // slow execution is skipped rather than stacked.
-func New(boardRepo *board.Repository, scoreRepo *score.Repository, log *zerolog.Logger) (*Scheduler, error) {
+func New(boardRepo *board.Repository, log *zerolog.Logger) (*Scheduler, error) {
 	s, err := gocron.NewScheduler()
 	if err != nil {
 		return nil, err
@@ -32,7 +30,6 @@ func New(boardRepo *board.Repository, scoreRepo *score.Repository, log *zerolog.
 	sch := &Scheduler{
 		s:         s,
 		boardRepo: boardRepo,
-		scoreRepo: scoreRepo,
 		log:       log,
 	}
 
@@ -62,8 +59,7 @@ func (sch *Scheduler) Shutdown() error {
 }
 
 // resetDueBoards is the job function. It fetches all boards whose next_reset_at
-// has elapsed, deletes their scores in one query, and updates their next_reset_at
-// in a single transaction.
+// has elapsed, deletes their scores, and advances next_reset_at atomically.
 func (sch *Scheduler) resetDueBoards() {
 	now := time.Now().UTC()
 	sch.log.Debug().Time("at", now).Msg("scheduler: checking for due boards")
@@ -91,13 +87,10 @@ func (sch *Scheduler) resetDueBoards() {
 		}
 	}
 
-	if err := sch.scoreRepo.DeleteByBoardIDs(boardIDs); err != nil {
-		sch.log.Error().Err(err).Msg("scheduler: failed to delete scores")
-		return
-	}
-
-	if err := sch.boardRepo.BatchUpdateNextResetAt(entries); err != nil {
-		sch.log.Error().Err(err).Msg("scheduler: failed to update next_reset_at")
+	// Delete scores and advance next_reset_at in a single transaction so
+	// a partial failure cannot leave scores deleted but the timer not advanced.
+	if err := sch.boardRepo.ResetBoards(boardIDs, entries); err != nil {
+		sch.log.Error().Err(err).Msg("scheduler: failed to reset boards")
 		return
 	}
 }

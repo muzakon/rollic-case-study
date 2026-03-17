@@ -13,11 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Handler exposes HTTP endpoints for score operations.
 type Handler struct {
 	service *Service
 	log     *zerolog.Logger
 }
 
+// NewHandler wires up the score handler with its repository and service layers.
 func NewHandler(db *gorm.DB, log *zerolog.Logger) *Handler {
 	repo := NewRepository(db)
 	boardRepo := board.NewRepository(db)

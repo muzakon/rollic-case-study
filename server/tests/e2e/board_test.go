@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -21,6 +22,21 @@ type boardResponse struct {
 type scheduleResponse struct {
 	Type            string `json:"type"`
 	IntervalSeconds *int   `json:"intervalSeconds,omitempty"`
+}
+
+// paginatedBoardResponse mirrors the paginated list response.
+type paginatedBoardResponse struct {
+	Data       []boardListItem `json:"data"`
+	TotalCount int             `json:"totalCount"`
+	Limit      int             `json:"limit"`
+	HasNext    bool            `json:"hasNext"`
+	Cursor     *string         `json:"cursor"`
+}
+
+type boardListItem struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // errorResponse mirrors the standard error response shape.
@@ -56,6 +72,7 @@ func TestCreateBoard_Success(t *testing.T) {
 	assert.NotEmpty(t, result.ID, "response should contain a UUID")
 	assert.NotEmpty(t, result.CreatedAt, "createdAt should be set")
 	assert.Nil(t, result.Schedule, "schedule should be nil when not provided")
+	assert.Nil(t, result.NextResetAt, "nextResetAt should be nil without schedule")
 }
 
 func TestCreateBoard_WithSchedule(t *testing.T) {
@@ -83,6 +100,7 @@ func TestCreateBoard_WithSchedule(t *testing.T) {
 	assert.Equal(t, "interval", result.Schedule.Type)
 	require.NotNil(t, result.Schedule.IntervalSeconds)
 	assert.Equal(t, interval, *result.Schedule.IntervalSeconds)
+	assert.NotNil(t, result.NextResetAt, "nextResetAt should be set for scheduled boards")
 }
 
 func TestCreateBoard_WithDailySchedule(t *testing.T) {
@@ -136,7 +154,6 @@ func TestCreateBoard_EmptyBody(t *testing.T) {
 	resp, err := testApp.Test(req)
 	require.NoError(t, err)
 
-	// Fiber v3 Bind().Body() returns 400 for empty/missing body
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
@@ -183,6 +200,36 @@ func TestCreateBoard_InvalidScheduleType(t *testing.T) {
 	assert.Contains(t, result.Details[0].Message, "one of")
 }
 
+func TestCreateBoard_IntervalScheduleMissingSeconds(t *testing.T) {
+	cleanBoards(t)
+
+	body := map[string]any{
+		"name": "Missing Interval Board",
+		"schedule": map[string]any{
+			"type": "interval",
+			// intervalSeconds missing — required_if=Type interval
+		},
+	}
+
+	resp := performRequest(t, http.MethodPost, boardsPath, body)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestCreateBoard_IntervalTooSmall(t *testing.T) {
+	cleanBoards(t)
+
+	body := map[string]any{
+		"name": "Tiny Interval Board",
+		"schedule": map[string]any{
+			"type":            "interval",
+			"intervalSeconds": 10, // gte=60 required
+		},
+	}
+
+	resp := performRequest(t, http.MethodPost, boardsPath, body)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
 func TestCreateBoard_Persisted(t *testing.T) {
 	cleanBoards(t)
 
@@ -191,7 +238,6 @@ func TestCreateBoard_Persisted(t *testing.T) {
 		"description": "Should survive a GET after POST",
 	}
 
-	// Create
 	createResp := performRequest(t, http.MethodPost, boardsPath, body)
 	require.Equal(t, http.StatusCreated, createResp.StatusCode)
 
@@ -199,7 +245,6 @@ func TestCreateBoard_Persisted(t *testing.T) {
 	parseJSON(t, createResp, &created)
 	require.NotEmpty(t, created.ID)
 
-	// Fetch by ID
 	getResp := performRequest(t, http.MethodGet, boardsPath+"/"+created.ID, nil)
 	assert.Equal(t, http.StatusOK, getResp.StatusCode)
 
@@ -213,18 +258,67 @@ func TestCreateBoard_Persisted(t *testing.T) {
 
 // --- GET /api/v1/boards ---
 
-func TestListBoards_Success(t *testing.T) {
+func TestListBoards_Empty(t *testing.T) {
 	cleanBoards(t)
-
-	// Create a board first
-	body := map[string]any{
-		"name":        "List Test Board",
-		"description": "To be listed",
-	}
-	performRequest(t, http.MethodPost, boardsPath, body)
 
 	resp := performRequest(t, http.MethodGet, boardsPath, nil)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result paginatedBoardResponse
+	parseJSON(t, resp, &result)
+
+	assert.Equal(t, int64(0), int64(result.TotalCount))
+	assert.Empty(t, result.Data)
+}
+
+func TestListBoards_Success(t *testing.T) {
+	cleanBoards(t)
+
+	// Create two boards
+	for _, name := range []string{"Board A", "Board B"} {
+		performRequest(t, http.MethodPost, boardsPath, map[string]any{"name": name})
+	}
+
+	resp := performRequest(t, http.MethodGet, boardsPath, nil)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result paginatedBoardResponse
+	parseJSON(t, resp, &result)
+
+	assert.Equal(t, 2, result.TotalCount)
+	assert.Len(t, result.Data, 2)
+}
+
+func TestListBoards_Pagination(t *testing.T) {
+	cleanBoards(t)
+
+	// Create 3 boards
+	for i := range 3 {
+		performRequest(t, http.MethodPost, boardsPath, map[string]any{
+			"name": fmt.Sprintf("Paginated Board %d", i),
+		})
+	}
+
+	// Page 1: limit=2
+	resp := performRequest(t, http.MethodGet, boardsPath+"?limit=2", nil)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var page1 paginatedBoardResponse
+	parseJSON(t, resp, &page1)
+
+	assert.Len(t, page1.Data, 2)
+	assert.True(t, page1.HasNext)
+	assert.NotNil(t, page1.Cursor)
+
+	// Page 2: use cursor
+	resp2 := performRequest(t, http.MethodGet, boardsPath+"?limit=2&cursor="+*page1.Cursor, nil)
+	assert.Equal(t, http.StatusOK, resp2.StatusCode)
+
+	var page2 paginatedBoardResponse
+	parseJSON(t, resp2, &page2)
+
+	assert.Len(t, page2.Data, 1)
+	assert.False(t, page2.HasNext)
 }
 
 // --- GET /api/v1/boards/:boardId ---
@@ -242,25 +336,31 @@ func TestGetBoard_Success(t *testing.T) {
 
 	resp := performRequest(t, http.MethodGet, boardsPath+"/"+created.ID, nil)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var fetched boardResponse
+	parseJSON(t, resp, &fetched)
+
+	assert.Equal(t, created.ID, fetched.ID)
+	assert.Equal(t, "Get Test Board", fetched.Name)
+	assert.NotEmpty(t, fetched.CreatedAt)
 }
 
 func TestGetBoard_NotFound(t *testing.T) {
 	cleanBoards(t)
 
-	// Valid UUID but doesn't exist
 	fakeId := "123e4567-e89b-12d3-a456-426614174000"
 	resp := performRequest(t, http.MethodGet, boardsPath+"/"+fakeId, nil)
 
-	// Custom error handler handles not found with 404
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	var result errorResponse
+	parseJSON(t, resp, &result)
+	assert.Contains(t, result.Error, "not found")
 }
 
 func TestGetBoard_InvalidUUID(t *testing.T) {
 	cleanBoards(t)
 
-	// Not a valid UUID string
 	resp := performRequest(t, http.MethodGet, boardsPath+"/not-a-uuid-string", nil)
-
-	// Handler validation drops to 400 Bad Request
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }

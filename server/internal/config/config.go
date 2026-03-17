@@ -46,6 +46,9 @@ type DatabaseConfig struct {
 	ConnMaxLifetime int    `env:"DB_CONN_MAX_LIFETIME_MINUTES" env-default:"15"`
 }
 
+// LoadConfig reads configuration from .env file, falling back to environment
+// variables if the file is not found. Panics on failure since the app cannot start
+// without valid configuration.
 func LoadConfig() *Config {
 	var cfg Config
 

@@ -1,19 +1,25 @@
 package score
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
+// Repository handles all database operations for the Score entity.
 type Repository struct {
 	db *gorm.DB
 }
 
+// NewRepository creates a new score repository backed by the given GORM connection.
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-// GetTopScores returns the top n scores for a board, ordered by score descending.
+// GetTopScores returns the top n scores for a board, ordered by score descending
+// with ties broken by earliest achieved_at (first-to-score ranks higher).
 func (r *Repository) GetTopScores(boardID uuid.UUID, n int) ([]Score, error) {
 	var scores []Score
 	err := r.db.
@@ -29,12 +35,14 @@ func (r *Repository) CreateMany(scores []Score) error {
 	return r.db.Create(&scores).Error
 }
 
-// Upsert creates or updates a score for a user on a board.
+// Upsert atomically creates or updates a score for a user on a board using
+// PostgreSQL ON CONFLICT DO UPDATE. This avoids race conditions that
+// FirstOrCreate would introduce under concurrent writes.
 func (r *Repository) Upsert(s *Score) error {
-	return r.db.
-		Where("board_id = ? AND user_id = ?", s.BoardID, s.UserID).
-		Assign(Score{ScoreValue: s.ScoreValue, AchievedAt: s.AchievedAt}).
-		FirstOrCreate(s).Error
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "board_id"}, {Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"score", "achieved_at", "updated_at"}),
+	}).Create(s).Error
 }
 
 // GetUserScore returns a single score for a user on a board.
@@ -54,8 +62,9 @@ func (r *Repository) DeleteByBoardIDs(boardIDs []uuid.UUID) error {
 	return r.db.Where("board_id IN ?", boardIDs).Delete(&Score{}).Error
 }
 
-// GetScoresAbove returns n scores ranked immediately above the given score (higher score or same score with earlier time).
-func (r *Repository) GetScoresAbove(boardID uuid.UUID, pivotScore int, pivotAchievedAt any, n int) ([]Score, error) {
+// GetScoresAbove returns n scores ranked immediately above the given pivot
+// (higher score, or same score with earlier achieved_at).
+func (r *Repository) GetScoresAbove(boardID uuid.UUID, pivotScore int, pivotAchievedAt time.Time, n int) ([]Score, error) {
 	var scores []Score
 	err := r.db.
 		Where("board_id = ? AND (score > ? OR (score = ? AND achieved_at < ?))",
@@ -66,8 +75,9 @@ func (r *Repository) GetScoresAbove(boardID uuid.UUID, pivotScore int, pivotAchi
 	return scores, err
 }
 
-// GetScoresBelow returns n scores ranked immediately below the given score (lower score or same score with later time).
-func (r *Repository) GetScoresBelow(boardID uuid.UUID, pivotScore int, pivotAchievedAt any, n int) ([]Score, error) {
+// GetScoresBelow returns n scores ranked immediately below the given pivot
+// (lower score, or same score with later achieved_at).
+func (r *Repository) GetScoresBelow(boardID uuid.UUID, pivotScore int, pivotAchievedAt time.Time, n int) ([]Score, error) {
 	var scores []Score
 	err := r.db.
 		Where("board_id = ? AND (score < ? OR (score = ? AND achieved_at > ?))",

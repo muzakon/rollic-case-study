@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// RegisterRoutes wires all API v1 route groups to their respective handlers.
 func RegisterRoutes(app *fiber.App, log *zerolog.Logger, db *gorm.DB, cfg *config.Config) {
 	boardHandler := board.NewHandler(db, log, cfg)
 	scoreHandler := score.NewHandler(db, log)

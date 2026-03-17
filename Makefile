@@ -12,5 +12,4 @@ clean:
 	docker system prune -f
 
 test-e2e:
-	@echo "Running E2E tests against PostgreSQL..."
-	@cd server && go test ./tests/e2e/... -v -count=1
+	@cd server && gotestsum --format testdox --hide-summary=skipped -- ./tests/e2e/... -count=1

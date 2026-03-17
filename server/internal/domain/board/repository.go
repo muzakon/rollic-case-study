@@ -10,18 +10,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// Repository handles all database operations for the Board entity.
 type Repository struct {
 	db *gorm.DB
 }
 
+// NewRepository creates a new board repository backed by the given GORM connection.
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
+// Create inserts a new board into the database.
 func (r *Repository) Create(board *Board) error {
 	return r.db.Create(board).Error
 }
 
+// GetByID retrieves a board by its UUID primary key.
 func (r *Repository) GetByID(id uuid.UUID) (*Board, error) {
 	var board Board
 	err := r.db.Where("id = ?", id).First(&board).Error
@@ -38,6 +42,7 @@ func (r *Repository) Exists(id uuid.UUID) (bool, error) {
 	return count > 0, err
 }
 
+// Count returns the total number of boards.
 func (r *Repository) Count() (int64, error) {
 	var count int64
 	err := r.db.Model(&Board{}).Count(&count).Error
@@ -107,6 +112,24 @@ type ResetEntry struct {
 // BatchUpdateNextResetAt updates next_reset_at for multiple boards in a single transaction.
 func (r *Repository) BatchUpdateNextResetAt(entries []ResetEntry) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, e := range entries {
+			if err := tx.Model(&Board{}).
+				Where("id = ?", e.ID).
+				Update("next_reset_at", e.NextResetAt).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// ResetBoards deletes all scores for the given board IDs and advances their
+// next_reset_at in a single transaction, ensuring atomicity.
+func (r *Repository) ResetBoards(boardIDs []uuid.UUID, entries []ResetEntry) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DELETE FROM scores WHERE board_id IN ?", boardIDs).Error; err != nil {
+			return err
+		}
 		for _, e := range entries {
 			if err := tx.Model(&Board{}).
 				Where("id = ?", e.ID).

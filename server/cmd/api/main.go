@@ -8,7 +8,6 @@ import (
 
 	"server/internal/config"
 	"server/internal/domain/board"
-	"server/internal/domain/score"
 	"server/internal/pkg/db"
 	"server/internal/pkg/logger"
 	"server/internal/scheduler"
@@ -28,9 +27,8 @@ func main() {
 	log.Info().Msg("Database connected successfully!")
 
 	boardRepo := board.NewRepository(database)
-	scoreRepo := score.NewRepository(database)
 
-	sched, err := scheduler.New(boardRepo, scoreRepo, log)
+	sched, err := scheduler.New(boardRepo, log)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create scheduler")
 	}

@@ -11,11 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Service implements the business logic for board CRUD operations.
 type Service struct {
 	repo *Repository
 	log  *zerolog.Logger
 }
 
+// NewService creates a new board service backed by the given repository.
 func NewService(repo *Repository, log *zerolog.Logger) *Service {
 	return &Service{repo: repo, log: log}
 }
@@ -40,6 +42,7 @@ func CalculateNextResetAt(schedule *BoardSchedule, from time.Time) *time.Time {
 	return nil
 }
 
+// Create persists a new board and computes its initial next_reset_at if a schedule is set.
 func (s *Service) Create(req *CreateBoardRequest) (*Board, error) {
 	board := &Board{
 		Name:        req.Name,
@@ -63,6 +66,7 @@ func (s *Service) Create(req *CreateBoardRequest) (*Board, error) {
 	return board, nil
 }
 
+// GetByID retrieves a single board or returns a 404 AppError if not found.
 func (s *Service) GetByID(id uuid.UUID) (*Board, error) {
 	board, err := s.repo.GetByID(id)
 	if err != nil {
@@ -75,6 +79,7 @@ func (s *Service) GetByID(id uuid.UUID) (*Board, error) {
 	return board, nil
 }
 
+// List returns boards with cursor-based pagination. If limit is nil, returns all boards.
 func (s *Service) List(limit *int, cursorStr string) (*response.PaginatedResponse, error) {
 	totalCount, err := s.repo.Count()
 	if err != nil {

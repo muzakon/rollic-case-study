@@ -40,6 +40,9 @@ func TestMain(m *testing.M) {
 	cfg := testConfig()
 	testCfg = cfg
 
+	// Silence goose migration logs to keep test output clean
+	goose.SetLogger(goose.NopLogger())
+
 	// 1. Create temporary database
 	if err := createTestDB(cfg); err != nil {
 		log.Fatalf("failed to create test database: %v", err)
@@ -57,8 +60,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	// 4. Build Fiber app using the existing server.New factory
-	testLogger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	// 4. Build Fiber app with logging disabled to keep test output clean
+	testLogger := zerolog.Nop()
 	testApp = server.New(cfg, &testLogger, gormDB)
 
 	// 5. Run tests
@@ -133,7 +136,6 @@ func createTestDB(cfg *config.Config) error {
 		return fmt.Errorf("create database %s: %w", testDBName, err)
 	}
 
-	log.Printf("created test database: %s", testDBName)
 	return nil
 }
 
@@ -165,7 +167,6 @@ func runMigrations(db *gorm.DB) error {
 		return fmt.Errorf("goose up: %w", err)
 	}
 
-	log.Println("migrations applied successfully")
 	return nil
 }
 
@@ -193,6 +194,5 @@ func dropTestDB(cfg *config.Config) error {
 		return fmt.Errorf("drop database %s: %w", testDBName, err)
 	}
 
-	log.Printf("dropped test database: %s", testDBName)
 	return nil
 }

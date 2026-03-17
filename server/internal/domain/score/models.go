@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Score represents a single user's score entry on a leaderboard.
 type Score struct {
 	// Composite primary key: one score per user, per board.
 	BoardID uuid.UUID `gorm:"type:uuid;primaryKey;index:idx_board_score_time,priority:1"`

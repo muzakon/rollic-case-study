@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// New creates a configured Fiber application with middleware and routes registered.
 func New(cfg *config.Config, log *zerolog.Logger, db *gorm.DB) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:         cfg.App.Name,
@@ -17,6 +18,8 @@ func New(cfg *config.Config, log *zerolog.Logger, db *gorm.DB) *fiber.App {
 		StructValidator: appvalidator.New(),
 		ErrorHandler:    middleware.GlobalErrorHandler,
 	})
+
+	app.Use(middleware.RequestLogger(log))
 
 	RegisterRoutes(app, log, db, cfg)
 
